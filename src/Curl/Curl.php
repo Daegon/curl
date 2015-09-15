@@ -50,7 +50,7 @@ class Curl
     public function get($url, $data = array())
     {
         if (count($data) > 0) {
-            $this->setopt(CURLOPT_URL, $url . '?' . http_build_query($data));
+            $this->setopt(CURLOPT_URL, $url . '?' . $this->http_build_query($data));
         } else {
             $this->setopt(CURLOPT_URL, $url);
         }
@@ -62,17 +62,17 @@ class Curl
     {
         $this->setopt(CURLOPT_URL, $url);
         $this->setopt(CURLOPT_POST, true);
-       if (is_array($data) || is_object($data))
-		{
-			$data = http_build_query($data);
-		}
+        if (is_array($data) || is_object($data))
+        {
+            $data = $this->http_build_query($data);
+        }
         $this->setopt(CURLOPT_POSTFIELDS, $data);
         $this->_exec();
     }
 
     public function put($url, $data = array())
     {
-        $this->setopt(CURLOPT_URL, $url . '?' . http_build_query($data));
+        $this->setopt(CURLOPT_URL, $url . '?' . $this->http_build_query($data));
         $this->setopt(CURLOPT_CUSTOMREQUEST, 'PUT');
         $this->_exec();
     }
@@ -87,7 +87,7 @@ class Curl
 
     public function delete($url, $data = array())
     {
-        $this->setopt(CURLOPT_URL, $url . '?' . http_build_query($data));
+        $this->setopt(CURLOPT_URL, $url . '?' . $this->http_build_query($data));
         $this->setopt(CURLOPT_CUSTOMREQUEST, 'DELETE');
         $this->_exec();
     }
@@ -122,7 +122,7 @@ class Curl
     public function setCookie($key, $value)
     {
         $this->_cookies[$key] = $value;
-        $this->setopt(CURLOPT_COOKIE, http_build_query($this->_cookies, '', '; '));
+        $this->setopt(CURLOPT_COOKIE, $this->http_build_query($this->_cookies, '', '; '));
     }
 
     public function setOpt($option, $value)
@@ -192,6 +192,24 @@ class Curl
     public function __destruct()
     {
         $this->close();
+    }
+
+    public function http_build_query(array $data)
+    {
+        static $stack = [];
+        $query = [];
+        foreach ($data as $k => $v) {
+            if (!isset($v) or is_scalar($v)) {
+                if ($stack) $k = implode('', $stack) . (is_int($k) ? '[]' : '[' . $k . ']');
+                elseif (is_int($k)) $k = '[]';
+                $query[] = $k . '=' . urlencode($v);
+            } else {
+                $stack[] = $stack ? '[' . $k . ']' : $k;
+                $query[] = $this->http_build_query($v);
+                array_pop($stack);
+            }
+        }
+        return implode('&', $query);
     }
 
     private function init()
